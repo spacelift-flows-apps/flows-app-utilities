@@ -5,7 +5,7 @@ export default {
     name: "For Loop",
     description:
         "A loop block that iterates over a range of values, emitting events for each iteration",
-    category: "Testing",
+    category: "Control Flow",
     config: {
         range: {
             name: "Range",
@@ -45,8 +45,23 @@ export default {
                     throw new Error("Step cannot be zero");
                 }
 
+                // Nothing to iterate if start is already past end
+                const wouldIterate = step > 0 ? start < end : start > end;
+                if (!wouldIterate) {
+                    // Loop is complete, emit completion event
+                    await events.emit(
+                        {
+                            iterations: 0,
+                        },
+                        {
+                            outputKey: "default",
+                        },
+                    );
+                    return;
+                }
+
                 // Initialize loop state in KV storage
-                const loopId= randomUUID();
+                const loopId = randomUUID();
                 const loopKey = `loop_${loopId}`;
                 await kv.block.set({
                     key: loopKey,
@@ -55,11 +70,11 @@ export default {
                         end,
                         step,
                         currentIndex: start,
-                        iterationCount: 0,
+                        iterationCount: 1,
                     },
                 });
 
-                console.info("Loop key:",loopKey)
+                console.info("Loop key:", loopKey);
 
                 // Emit first iteration
                 await events.emit(
@@ -70,7 +85,7 @@ export default {
                     {
                         outputKey: "loop",
                         echo: true,
-                    }
+                    },
                 );
             },
         },
@@ -87,7 +102,7 @@ export default {
             onEvent: async (input) => {
                 const {continueLoop} = input.event.inputConfig;
 
-                console.info("Loop event:",input.event)
+                console.info("Loop event:", input.event);
                 const loopId = input.event.echo?.body.loopId;
 
                 if (!loopId) {
@@ -98,12 +113,14 @@ export default {
 
                 const {value: loopState} = await kv.block.get(loopKey);
 
-                const {start, end, step, value, currentIndex, iterationCount} = loopState;
+                const {start, end, step, value, currentIndex, iterationCount} =
+                    loopState;
                 const nextIndex = currentIndex + step;
                 const nextIterationCount = iterationCount + 1;
 
-                // Check if we should continue the loop
-                const shouldContinue = (continueLoop ?? true) && nextIndex < end;
+                // Check if we should continue the loop (handles both positive and negative steps)
+                const withinRange = step > 0 ? nextIndex < end : nextIndex > end;
+                const shouldContinue = (continueLoop ?? true) && withinRange;
 
                 if (shouldContinue) {
                     // Update state for next iteration
@@ -129,9 +146,12 @@ export default {
                         {
                             outputKey: "loop",
                             echo: true,
-                        }
+                        },
                     );
                 } else {
+                    // Clean up loop state before emitting completion
+                    await kv.block.delete([loopKey]);
+
                     // Loop is complete, emit completion event
                     await events.emit(
                         {
@@ -140,11 +160,8 @@ export default {
                         },
                         {
                             outputKey: "default",
-                        }
+                        },
                     );
-
-                    // Clean up loop state
-                    await kv.block.delete([loopKey]);
                 }
             },
         },
@@ -152,27 +169,31 @@ export default {
     outputs: {
         default: {
             default: true,
-            config: {
-                value: {
-                    name: "Value",
-                    type: "any",
-                },
-                iterations: {
-                    name: "Iterations",
-                    type: "number",
-                },
+            type: {
+                type: "object",
+                properties: {
+                    value: {
+                        type: "any",
+                    },
+                    iterations: {
+                        type: "number",
+                    },
+                }
+
             },
         },
         loop: {
-            config: {
-                index: {
-                    name: "Index",
-                    type: "number",
-                },
-                value: {
-                    name: "Value",
-                    type: "any",
-                },
+            type: {
+                type: "object",
+                properties: {
+                    index: {
+                        type: "number",
+                    },
+                    value: {
+                        type: "any",
+                    },
+                }
+
             },
         },
     },

@@ -25,5 +25,5 @@ export const blocks = {
   subroutineCall,
   subroutineDefinition,
   timeout,
-    loop,
+  loop,
 };
