@@ -113,7 +113,7 @@ export default {
 
                 const {value: loopState} = await kv.block.get(loopKey);
 
-                const {start, end, step, value, currentIndex, iterationCount} =
+                const {start, end, step, currentIndex, iterationCount} =
                     loopState;
                 const nextIndex = currentIndex + step;
                 const nextIterationCount = iterationCount + 1;
@@ -130,7 +130,6 @@ export default {
                             start,
                             end,
                             step,
-                            value,
                             currentIndex: nextIndex,
                             iterationCount: nextIterationCount,
                         },
@@ -141,7 +140,6 @@ export default {
                         {
                             index: nextIndex,
                             loopId: loopId,
-                            value,
                         },
                         {
                             outputKey: "loop",
@@ -155,8 +153,7 @@ export default {
                     // Loop is complete, emit completion event
                     await events.emit(
                         {
-                            value,
-                            iterations: nextIterationCount,
+                            iterations: iterationCount,
                         },
                         {
                             outputKey: "default",
@@ -172,9 +169,6 @@ export default {
             type: {
                 type: "object",
                 properties: {
-                    value: {
-                        type: "any",
-                    },
                     iterations: {
                         type: "number",
                     },
@@ -188,9 +182,6 @@ export default {
                 properties: {
                     index: {
                         type: "number",
-                    },
-                    value: {
-                        type: "any",
                     },
                 }
 
