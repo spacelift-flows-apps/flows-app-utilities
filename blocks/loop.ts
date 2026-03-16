@@ -99,6 +99,7 @@ export default {
         const loopId = input.event.echo?.body.loopId;
 
         if (!loopId) {
+          console.warn(`Received event ${input.event.id} from outside loop body, ignoring`);
           return;
         }
 
