@@ -7,39 +7,34 @@ export default {
     "A loop block that iterates over a range of values, emitting events for each iteration",
   category: "Control Flow",
   config: {
-    range: {
-      name: "Range",
-      description: "The range of values to iterate over",
-      type: {
-        type: "object",
-        properties: {
-          start: {
-            type: "number",
-            description: "Starting value (inclusive)",
-          },
-          end: {
-            type: "number",
-            description: "Ending value (exclusive)",
-          },
-          step: {
-            type: "number",
-            description: "Step increment",
-          },
-        },
-        required: ["start", "end"],
-      },
+    start: {
+      name: "Start",
+      description: "Starting value (inclusive)",
+      type: "number",
       required: true,
-      default: { start: 0, end: 10, step: 1 },
+      default: 0,
+    },
+    end: {
+      name: "End",
+      description: "Ending value (exclusive)",
+      type: "number",
+      required: true,
+      default: 10,
+    },
+    step: {
+      name: "Step",
+      description: "Step increment",
+      type: "number",
+      required: false,
+      default: 1,
     },
   },
   inputs: {
     default: {
       onEvent: async (input) => {
-        const { range } = input.block.config;
-
-        const start = range?.start ?? 0;
-        const end = range?.end ?? 10;
-        const step = range?.step ?? 1;
+        const start = input.block.config.start;
+        const end = input.block.config.end;
+        const step = input.block.config.step;
 
         if (step === 0) {
           throw new Error("Step cannot be zero");
@@ -74,7 +69,6 @@ export default {
           },
         });
 
-        console.info("Loop key:", loopKey);
 
         // Emit first iteration
         await events.emit(
@@ -102,7 +96,6 @@ export default {
       onEvent: async (input) => {
         const { continueLoop } = input.event.inputConfig;
 
-        console.info("Loop event:", input.event);
         const loopId = input.event.echo?.body.loopId;
 
         if (!loopId) {
