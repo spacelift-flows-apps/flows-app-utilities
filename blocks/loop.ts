@@ -66,6 +66,7 @@ export default {
             step,
             currentIndex: start,
             iterationCount: 1,
+            outputs: [],
           },
         });
 
@@ -91,9 +92,16 @@ export default {
           required: false,
           default: true,
         },
+        outputValue: {
+          name: "Output Value",
+          description:
+            "Optional value to collect from this iteration. All collected values will be included in the final completion event.",
+          type: "any",
+          required: false,
+        },
       },
       onEvent: async (input) => {
-        const { continueLoop } = input.event.inputConfig;
+        const { continueLoop, outputValue } = input.event.inputConfig;
 
         const loopId = input.event.echo?.body.loopId;
 
@@ -108,9 +116,12 @@ export default {
 
         const { value: loopState } = await kv.block.get(loopKey);
 
-        const { start, end, step, currentIndex, iterationCount } = loopState;
+        const { start, end, step, currentIndex, iterationCount, outputs } =
+          loopState;
         const nextIndex = currentIndex + step;
         const nextIterationCount = iterationCount + 1;
+        const nextOutputs =
+          outputValue !== undefined ? [...outputs, outputValue] : outputs;
 
         // Check if we should continue the loop (handles both positive and negative steps)
         const withinRange = step > 0 ? nextIndex < end : nextIndex > end;
@@ -126,6 +137,7 @@ export default {
               step,
               currentIndex: nextIndex,
               iterationCount: nextIterationCount,
+              outputs: nextOutputs,
             },
           });
 
@@ -148,6 +160,7 @@ export default {
           await events.emit(
             {
               iterations: iterationCount,
+              outputs: nextOutputs,
             },
             {
               outputKey: "default",
@@ -165,6 +178,10 @@ export default {
         properties: {
           iterations: {
             type: "number",
+          },
+          outputs: {
+            type: "array",
+            items: { type: "any" },
           },
         },
       },
