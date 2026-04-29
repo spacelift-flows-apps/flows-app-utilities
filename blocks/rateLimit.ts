@@ -1,11 +1,24 @@
-import { AppBlock, events, kv } from "@slflows/sdk/v1";
+import { AppBlock, events, kv, lifecycle } from "@slflows/sdk/v1";
 
 const BUCKET_KEY = "bucket";
+const QUEUE_PREFIX = "q:";
 
 interface BucketState {
   tokens: number;
   lastUpdate: number;
 }
+
+interface QueuedEvent {
+  eventId: string;
+}
+
+const validate = (count: number, interval: number) => {
+  if (!(count > 0) || !(interval > 0)) {
+    throw new Error(
+      `Rate Limit requires count > 0 and interval > 0 (got count=${count}, interval=${interval})`,
+    );
+  }
+};
 
 const rateLimit: AppBlock = {
   name: "Rate Limit",
@@ -60,43 +73,69 @@ const rateLimit: AppBlock = {
 
   inputs: {
     default: {
-      onEvent: async (input) => {
-        const count = input.block.config.count as number;
-        const interval = input.block.config.interval as number;
-
-        if (!(count > 0) || !(interval > 0)) {
-          throw new Error(
-            `Rate Limit requires count > 0 and interval > 0 (got count=${count}, interval=${interval})`,
-          );
-        }
-
-        const now = Date.now();
-        const { value: stored } = await kv.block.get(BUCKET_KEY);
-        const prev: BucketState = stored ?? { tokens: count, lastUpdate: now };
-
-        const tokensPerMs = count / (interval * 1000);
-        const refilled = Math.min(
-          count,
-          prev.tokens + (now - prev.lastUpdate) * tokensPerMs,
-        );
-
-        const allowed = refilled >= 1;
-        const newTokens = allowed ? refilled - 1 : refilled;
-
-        await Promise.all([
-          kv.block.set({
-            key: BUCKET_KEY,
-            value: { tokens: newTokens, lastUpdate: now } satisfies BucketState,
-          }),
-          events.emit(
-            {},
-            {
-              outputKey: allowed ? "default" : "excess",
-            },
-          ),
-        ]);
+      onEvent: async ({ event }) => {
+        // Enqueue with timestamp-prefixed key so onSync processes in arrival
+        // order regardless of how the runtime orders KV list results.
+        const ts = Date.now().toString().padStart(13, "0");
+        await kv.block.set({
+          key: `${QUEUE_PREFIX}${ts}:${event.id}`,
+          value: { eventId: event.id } satisfies QueuedEvent,
+        });
+        await lifecycle.sync();
       },
     },
+  },
+
+  // The bucket update is serialized through onSync rather than done directly
+  // in onEvent. The runtime guarantees onSync runs one at a time per block,
+  // which gives us atomic read-modify-write on the bucket state across
+  // arbitrarily many concurrent incoming events.
+  onSync: async ({ block: { config } }) => {
+    const count = config.count as number;
+    const interval = config.interval as number;
+    validate(count, interval);
+
+    const { pairs } = await kv.block.list({ keyPrefix: QUEUE_PREFIX });
+    if (pairs.length === 0) {
+      return { newStatus: "ready" };
+    }
+
+    const now = Date.now();
+    const { value: stored } = await kv.block.get(BUCKET_KEY);
+    const prev: BucketState = stored ?? { tokens: count, lastUpdate: now };
+
+    const tokensPerMs = count / (interval * 1000);
+    let tokens = Math.min(
+      count,
+      prev.tokens + (now - prev.lastUpdate) * tokensPerMs,
+    );
+
+    const emits: Promise<void>[] = [];
+    for (const pair of pairs) {
+      const { eventId } = pair.value as QueuedEvent;
+      const allowed = tokens >= 1;
+      if (allowed) tokens -= 1;
+      emits.push(
+        events.emit(
+          {},
+          {
+            outputKey: allowed ? "default" : "excess",
+            parentEventId: eventId,
+          },
+        ),
+      );
+    }
+
+    await Promise.all([
+      kv.block.set({
+        key: BUCKET_KEY,
+        value: { tokens, lastUpdate: now } satisfies BucketState,
+      }),
+      kv.block.delete(pairs.map((p) => p.key)),
+      ...emits,
+    ]);
+
+    return { newStatus: "ready" };
   },
 
   outputs: {
