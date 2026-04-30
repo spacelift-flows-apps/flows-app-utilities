@@ -46,6 +46,7 @@ const rateLimit: AppBlock = {
     "Companion: use the Throttle block instead if you want excess events queued " +
     "and emitted later rather than diverted to a separate output.",
 
+  autoconfirm: true,
   config: {
     count: {
       name: "Count",
