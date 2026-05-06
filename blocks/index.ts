@@ -9,6 +9,7 @@ import observe from "./observe.ts";
 import stage from "./stage.ts";
 import subroutineCall from "./subroutineCall.ts";
 import subroutineDefinition from "./subroutineDefinition.ts";
+import subroutineSwitch from "./subroutineSwitch.ts";
 import timeout from "./timeout.ts";
 import loop from "./loop.ts";
 
@@ -24,6 +25,7 @@ export const blocks = {
   stage,
   subroutineCall,
   subroutineDefinition,
+  subroutineSwitch,
   timeout,
   loop,
 };
