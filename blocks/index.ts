@@ -11,6 +11,8 @@ import subroutineCall from "./subroutineCall.ts";
 import subroutineDefinition from "./subroutineDefinition.ts";
 import timeout from "./timeout.ts";
 import loop from "./loop.ts";
+import rateLimit from "./rateLimit.ts";
+import throttle from "./throttle.ts";
 
 export const blocks = {
   capture,
@@ -26,4 +28,6 @@ export const blocks = {
   subroutineDefinition,
   timeout,
   loop,
+  rateLimit,
+  throttle,
 };
