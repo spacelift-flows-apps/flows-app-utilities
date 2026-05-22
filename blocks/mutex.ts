@@ -34,7 +34,7 @@ const mutex: AppBlock = {
     "- Only the first event gets processed immediately\n" +
     "- Others wait their turn until the mutex is released\n\n" +
     "Release mechanisms:\n" +
-    "- Automatic timeout: Events are released after the configured timeout period\n" +
+    "- Automatic timeout: Events are optionally released after the configured timeout period\n" +
     "- Manual release: Use the `release` input to manually release the mutex\n\n" +
     "Use cases: Rate-limited APIs, file operations, database transactions, " +
     "or any resource that can only handle one operation at a time.",
@@ -69,17 +69,20 @@ const mutex: AppBlock = {
     ] = pairs;
     const eventId = key.split(":")[1];
 
-    await Promise.all([
-      timers.set(timeout, { inputPayload: eventId }),
+    const promises: Promise<any>[] = [
       kv.block.setMany([
         { key: CURRENT_HOLDER_KEY, value: eventId, lock: { id: eventId } },
-        { key: `evt:${eventId}`, value: "", ttl: 0 }, // Delete the event from the queue.
+        { key: `evt:${eventId}`, value: "", ttl: 0 },
       ]),
       events.emit(
         { lockId: eventId },
         { complete: pendingId, echo: true, parentEventId: eventId },
       ),
-    ]);
+    ];
+    if (timeout) {
+      promises.push(timers.set(timeout, { inputPayload: eventId }));
+    }
+    await Promise.all(promises);
 
     return statusHeld;
   },
@@ -98,20 +101,22 @@ const mutex: AppBlock = {
         timeout: {
           name: "Lock timeout",
           type: "number",
-          description: "Automatic release timeout in seconds.",
-          required: true,
-          default: 60,
+          description:
+            "Automatic release timeout in seconds. If not set, the lock must be released manually.",
+          required: false,
         },
       },
       onEvent: async ({ event }) => {
         const pendingId = await events.createPending({
           statusDescription: "Waiting for mutex",
         });
-        const timeout = event.inputConfig.timeout;
 
         await kv.block.set({
           key: `evt:${event.id}`,
-          value: { pendingId, timeout },
+          value: {
+            pendingId,
+            timeout: event.inputConfig.timeout,
+          },
         });
         await lifecycle.sync();
       },
@@ -120,8 +125,12 @@ const mutex: AppBlock = {
       name: "Release",
       description: "Releases the mutex lock",
       config: {},
-      onEvent: async ({ event: { echo } }) => {
-        if (await clearLock(echo?.body.lockId || "")) {
+      onEvent: async ({ event }) => {
+        const { value: currentHolder } = await kv.block.get(CURRENT_HOLDER_KEY);
+        const lockId = event.echo?.body.lockId || currentHolder;
+        if (!lockId) return;
+
+        if (await clearLock(lockId)) {
           await lifecycle.sync();
         }
       },
