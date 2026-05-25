@@ -43,7 +43,7 @@ const subroutineCall: AppBlock = {
         });
 
         // Set a timeout timer
-        const timerId = await timers.set(timeoutSeconds, {
+        const timerId = await timers.block.set(timeoutSeconds, {
           pendingEventId,
           inputPayload: { eventId },
         });
@@ -114,7 +114,7 @@ const subroutineCall: AppBlock = {
   onInternalMessage: async (input) => {
     const { result, eventId, pendingEventId, timerId } = input.message.body;
     await Promise.all([
-      timers.unset(timerId),
+      timers.block.unset(timerId),
 
       events.emit(
         { value: result },

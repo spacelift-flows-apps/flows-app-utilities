@@ -67,7 +67,7 @@ const capture: AppBlock = {
             expiresAt = Date.now() + timeoutSeconds * 1000;
 
             // Set a new timer to reset value when timeout expires
-            await timers.set(timeoutSeconds, {
+            await timers.block.set(timeoutSeconds, {
               description: "Reset captured value to default",
               inputPayload: { eventId },
             });

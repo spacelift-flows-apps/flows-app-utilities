@@ -90,7 +90,7 @@ const merge: AppBlock = {
           });
 
           // Set a timer to handle timeout case
-          await timers.set(effectiveTimeout, {
+          await timers.block.set(effectiveTimeout, {
             inputPayload: {
               kvKey,
               eventId: input.event.id,
