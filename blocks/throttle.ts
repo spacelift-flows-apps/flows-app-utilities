@@ -115,7 +115,10 @@ const throttle: AppBlock = {
       // Nothing queued — clear any stale timer state and idle.
       const cleanup: Promise<any>[] = [];
       if (oldTimerId) {
-        cleanup.push(timers.block.unset(oldTimerId), kv.block.delete([TIMER_KEY]));
+        cleanup.push(
+          timers.block.unset(oldTimerId),
+          kv.block.delete([TIMER_KEY]),
+        );
       }
       await Promise.all(cleanup);
       return { newStatus: "ready" };
