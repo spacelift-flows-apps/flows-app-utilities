@@ -64,7 +64,7 @@ const timeout: AppBlock = {
         });
 
         // Set the timer, grab its *internal* ID.
-        const timerId = await timers.set(seconds, {
+        const timerId = await timers.block.set(seconds, {
           inputPayload: uuid,
           pendingEventId,
         });
@@ -109,7 +109,7 @@ const timeout: AppBlock = {
         } = await kv.block.get(uuid);
 
         await Promise.all([
-          timers.unset(timerId),
+          timers.block.unset(timerId),
           events.cancelPending(pendingEventId, "Timer cancelled by user"),
           kv.block.delete([uuid]),
         ]);

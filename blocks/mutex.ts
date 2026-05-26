@@ -70,7 +70,7 @@ const mutex: AppBlock = {
     const eventId = key.split(":")[1];
 
     await Promise.all([
-      timers.set(timeout, { inputPayload: eventId }),
+      timers.block.set(timeout, { inputPayload: eventId }),
       kv.block.setMany([
         { key: CURRENT_HOLDER_KEY, value: eventId, lock: { id: eventId } },
         { key: `evt:${eventId}`, value: "", ttl: 0 }, // Delete the event from the queue.

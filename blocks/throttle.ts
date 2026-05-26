@@ -115,7 +115,10 @@ const throttle: AppBlock = {
       // Nothing queued — clear any stale timer state and idle.
       const cleanup: Promise<any>[] = [];
       if (oldTimerId) {
-        cleanup.push(timers.unset(oldTimerId), kv.block.delete([TIMER_KEY]));
+        cleanup.push(
+          timers.block.unset(oldTimerId),
+          kv.block.delete([TIMER_KEY]),
+        );
       }
       await Promise.all(cleanup);
       return { newStatus: "ready" };
@@ -149,7 +152,7 @@ const throttle: AppBlock = {
     // more refill than the bare minimum when we wake.
     const timerOps: Promise<any>[] = [];
     if (oldTimerId) {
-      timerOps.push(timers.unset(oldTimerId));
+      timerOps.push(timers.block.unset(oldTimerId));
     }
     if (remaining > 0) {
       const need = Math.max(0, 1 - tokens);
@@ -157,7 +160,7 @@ const throttle: AppBlock = {
         1,
         Math.ceil((need * interval) / count),
       );
-      const newTimerId = await timers.set(secondsUntilNextToken, {});
+      const newTimerId = await timers.block.set(secondsUntilNextToken, {});
       timerOps.push(kv.block.set({ key: TIMER_KEY, value: newTimerId }));
     } else if (oldTimerId) {
       timerOps.push(kv.block.delete([TIMER_KEY]));
