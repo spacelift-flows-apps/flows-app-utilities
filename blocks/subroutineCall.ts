@@ -1,9 +1,10 @@
 import { AppBlock, events, messaging, timers } from "@slflows/sdk/v1";
 
 const subroutineCall: AppBlock = {
-  name: "Subroutine call",
+  name: "Subroutine call (deprecated)",
   category: "Control",
   description:
+    "Deprecated: use the built-in Subroutine Call block instead. " +
     "Call a subroutine defined by a Subroutine Definition block. " +
     "Pass a payload and receive the result.",
   inputs: {
