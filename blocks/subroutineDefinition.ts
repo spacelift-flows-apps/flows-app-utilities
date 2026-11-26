@@ -2,10 +2,11 @@ import { AppBlock, events, kv, messaging } from "@slflows/sdk/v1";
 import { randomUUID } from "node:crypto";
 
 const subroutineDefinition: AppBlock = {
-  name: "Subroutine definition",
+  name: "Subroutine definition (deprecated)",
   autoconfirm: true,
   category: "Control",
   description:
+    "Deprecated: use the built-in Subroutine Definition block instead. " +
     "Define a subroutine that can be called by Subroutine Call blocks. " +
     "Exports its block ID as a signal for reference.",
   inputs: {
